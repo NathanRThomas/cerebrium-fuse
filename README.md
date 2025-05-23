@@ -8,6 +8,8 @@ Setup on Github workspaces is pretty easy
 ```
 sudo apt update
 sudo apt install fuse3 -y
+sudo mkdir /mnt/all-projects
+sudo chmod 777 /mnt/all-projects
 ```
 
 ## Running it

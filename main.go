@@ -105,7 +105,7 @@ func (d Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		return readDir(d.path, name)
 	}
 
-	fmt.Println("we didn't find anything")
+	// fmt.Println("we didn't find anything")
 
 	// do the same not exist check again
 	if os.IsNotExist(err) {
@@ -161,13 +161,12 @@ func (d Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 type File struct {
 	path, cachedPath string
 	inode, size      uint64
-	mode             os.FileMode
 }
 
 // this makes it a fs.Node interface
 func (f File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Inode = f.inode
-	a.Mode = f.mode
+	a.Mode = 0444
 	a.Size = f.size
 	return nil
 }
@@ -233,8 +232,6 @@ func findFile(ctx context.Context, path, name string) (*File, error) {
 	}
 
 	// otherwise, we're good and done
-	file.mode = info.Mode().Perm()
-
 	// we want to pull all the contents as well
 	content, err := file.ReadAll(ctx)
 	if err != nil {
@@ -247,7 +244,7 @@ func findFile(ctx context.Context, path, name string) (*File, error) {
 	// but we sould also take this chance to cache it if it wasn't already cached
 	if file.cachedPath == "" {
 		go func() {
-			err = os.WriteFile(cachedPath, content, file.mode)
+			err = os.WriteFile(cachedPath, content, 0664)
 			if err != nil {
 				slog.Error(fmt.Sprintf("error writing file to cache: %s : %v", cachedPath, err))
 				return
