@@ -171,6 +171,7 @@ type File struct {
 	mode             os.FileMode
 }
 
+// this makes it a fs.Node interface
 func (f File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Inode = f.inode
 	a.Mode = f.mode
@@ -178,6 +179,7 @@ func (f File) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
+// Reads from the cached location first, otherwise from the slower disk
 func (f File) ReadAll(ctx context.Context) ([]byte, error) {
 	if len(f.cachedPath) > 0 {
 		fmt.Println("read from cache", f.cachedPath)
@@ -196,27 +198,6 @@ func (f File) ReadAll(ctx context.Context) ([]byte, error) {
 	fmt.Println("read from non-cache", f.path)
 	// not cached, so return it here
 	return os.ReadFile(f.path)
-}
-
-// takes the file and its contents and caches it in our quick disk
-func (f *File) cacheIt(name string) {
-
-	contents, err := os.ReadFile(f.path) // pull the original file, which is in the slow directory
-	if err != nil {
-		slog.Error(fmt.Sprintf("error writing file to cache: %s : %v", f.path, err))
-		return // bail
-	}
-
-	fullPath := filepath.Join(cacheDir, name) // always code like someone will review it
-
-	err = os.WriteFile(fullPath, contents, f.mode)
-	if err != nil {
-		slog.Error(fmt.Sprintf("error writing file to cache: %s : %v", fullPath, err))
-		return
-	}
-
-	// else we got it cached now
-	f.cachedPath = fullPath // save this for the next read
 }
 
 //-------------------------------------------------------------------------------------------------------------------//
@@ -243,7 +224,7 @@ func findFile(ctx context.Context, path, name string) (*File, error) {
 	} else {
 		if os.IsNotExist(err) == false {
 			// we want to know if this sort of error happens
-			slog.Error(fmt.Sprintf("unable to stat cached directory location"))
+			slog.Error(fmt.Sprintf("unable to stat cached directory location: %s", cachedPath))
 		}
 
 		// try the slow disk location
@@ -264,7 +245,7 @@ func findFile(ctx context.Context, path, name string) (*File, error) {
 	// we want to pull all the contents as well
 	content, err := file.ReadAll(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error reading contents of file: %s : %s : %v", path, file, err)
+		return nil, fmt.Errorf("error reading contents of file: %s : %s : %v", path, name, err)
 	}
 
 	file.size = uint64(len(content)) // get the size of the file
