@@ -137,15 +137,8 @@ func (d Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			continue
 		}
 
-		// Get the underlying data interface
-		stat, ok := info.Sys().(*syscall.Stat_t)
-		if !ok {
-			slog.Warn(fmt.Sprintf("failed to get inode: %s", fullPath))
-			continue
-		}
-
 		dir := fuse.Dirent{
-			Inode: stat.Ino,
+			Inode: count.next(),
 			Name:  info.Name(),
 		}
 
